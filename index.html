@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+    <html>
+        <head>
+            <script src="lib/jquery.js"></script>
+            <style>
+                body {background: url('images/texture.png') 0 0 transparent;width: 100%;margin: 0;padding: 0;}
+                #gradient {background: -webkit-radial-gradient(center, ellipse cover, #008c17 0%,#0f7200 100%);position: absolute;opacity: .8;}
+                #deck {height: 63px;width: 45px;float: left;}
+                #game {width: 500px;height: 350px;position: absolute;}
+                .card {height: 63px;width: 45px;float: left;position: absolute;border-radius:3px;-webkit-transform-style: preserve-3d;-webkit-transition: -webkit-transform .5s, left 1s, top 1s;}
+                .side{position: absolute;-webkit-backface-visibility: hidden;}
+                .front{height: 100%;width: 100%;border-radius:3px;border: 1px solid #000;background-color: white;}
+                .back{height: 100%;width: 100%;border-radius:3px;-webkit-transform: rotateY(180deg);background-image: url('images/pattern.gif');}
+                #buttons {width: 90px;float: left;height: 350px;margin-left: 520px;display: none;}
+                #buttons div {float: left;width: 90px;height: 30px;background-color: #ffb90f;text-align: center;margin: 5px;line-height: 30px;font-family: arial;color:white;font-weight: 700;border: 1px solid black;border-radius: 5px;-webkit-transition: background-color .3s;margin-top: 50px;}
+                #buttons div:hover {background-color: #cd6600;cursor: pointer;}
+                .card_face,.card_suit {width: 100%;text-align: center;}
+                .card_face {font-size: 24px;font-weight: 700;height: 35%;}
+                .card_suit {font-size: 40px;height: 60%;}
+                #howto {
+                    width: 100%;
+                    float: left;
+                    position: absolute;
+                    top: 400px;
+                    background-color: hsl(24, 100%, 33%);
+                    padding: 10px;
+                    border: 1px solid black;
+                    border-radius: 3px;
+                    color: white;
+                }
+            </style>
+        </head>
+        <body>
+            <div id="gradient"></div>
+            <div id="game">
+                <div id="deck" class="back"></div>
+                <div id="buttons">
+                    <div onclick="takeTurn(1)">Row 1</div>
+                    <div onclick="takeTurn(2)">Row 2</div>
+                    <div onclick="takeTurn(3)">Row 3</div>
+                </div>
+                <div id="howto">
+                    <div id="howto_title">How-To Play</div>
+                    <ol>
+                        <li>Pick a card, any card....</li>
+                        <li>Remember your card through the game, just tell me which row it is in.</li>
+                        <li>Click one of the buttons on the right, and after just three turns, I will guess your card</li>
+                    </ol>
+                </div>
+            </div>
+            <script>
+                var stacks;
+                var turn=0;
+                var cardNum=0;
+                
+                function Card(){
+                    this.face="";
+                    this.suit='';
+                    this.number=0;
+                    this.div='';
+                };
+                
+                function init(){
+                    stacks = buildStacks();
+                    for(i in stacks){
+                        for(card in stacks[i]){
+                            var div=makeCardDiv(stacks[i][card]);
+                            document.getElementById('game').appendChild(div);
+                        }
+                    }
+                    var game = document.getElementById('game');
+                    game.style.left=(window.innerWidth-game.clientWidth)/2+'px';
+                    game.style.top=(((window.innerHeight-game.clientHeight)/2)-100)+'px';
+                    
+                    unStackCards();
+                    setTimeout(function(){flipAllCards();$('#buttons').delay(3000).fadeIn();},4000);
+                }
+                
+                function buildStacks(){
+                    var suit="spades clubs hearts diams".split(" ")
+                    var face="A K Q J 10 9 8 7 6 5 4 3 2".split(" ")
+                    var m=Math;
+                    var compare=[];
+                    var s=[[],[],[]];
+                    
+                    for(i=0;i<21;i++){
+                        var newCard=false;
+                        var csuit=suit[m.floor(4*m.random())];
+                        var cFace=face[m.floor(13*m.random())];
+                        
+                        var test=csuit+cFace;
+                        
+                        for(x=0;x<compare.length;x++){
+                            if(compare[x]==test)
+                                newCard=true;
+                        }
+                        
+                        if(newCard){
+                            i--;
+                        }else{
+                            compare.push(test);
+                            var card = new Card();
+                            card.face=cFace;
+                            card.suit=csuit;
+                            card.number=i;
+                            s[Math.floor(i/7)].push(card);
+                        }
+                    }
+                    return s;
+                };
+                
+                function makeCardDiv(card){
+                    cardNum++;
+                    var cardDiv=document.createElement("div");
+                    var frontDiv=document.createElement("div");
+                    var backDiv=document.createElement("div");
+                    
+                    cardDiv.classList.add('card');
+                    cardDiv.style.top=card.top+'px';
+                    cardDiv.style.left=card.left+'px';
+                    cardDiv.style.webkitTransform='rotateY(180deg) rotateZ('+(-8+Math.floor(Math.random()*16))+'deg)';
+                    
+                    frontDiv.classList.add('front');
+                    frontDiv.classList.add('side');
+                    frontDiv.innerHTML='<div class="card_face">'+card.face+'</div><div class="card_suit">&'+card.suit+';</div>';
+                    switch(card.suit){
+                        case "hearts":case"diams":
+                            frontDiv.style.color="red";
+                            break;
+                        case "clubs":case"spades":
+                            frontDiv.style.color="black";
+                            break;
+                    }
+                    
+                    backDiv.classList.add('back');
+                    backDiv.classList.add('side');
+                    
+                    cardDiv.appendChild(frontDiv);
+                    cardDiv.appendChild(backDiv);
+                    
+                    card.div=cardDiv;
+                    return cardDiv;
+                }
+                
+                function flipAllCards(reverse){
+                    var reverse = reverse || false;                    
+                    var i=(reverse ? 20 : 0);
+                    var intVal=setInterval(function(){
+                        var card=stacks[Math.floor(i/7)][i%7];
+                        flipCard(card);
+                        (reverse ? i-- : i++) ;
+                        if(reverse){
+                            if(i<0)clearInterval(intVal);
+                        }else{
+                            if(i>=21)clearInterval(intVal);
+                        }
+                    },150);
+                }
+                
+                function flipCard(card){
+                    if(card.div.className == "card"){
+                        card.div.className += " rotated";
+                        card.div.style.webkitTransform='rotateZ('+(-5+Math.floor(Math.random()*10))+'deg)';
+                    }else{
+                        card.div.className = "card";
+                        card.div.style.webkitTransform='rotateY(180deg) rotateZ('+(-5+Math.floor(Math.random()*10))+'deg)';
+                    }
+                }
+                
+                function stackCards(){
+                    var i=0;
+                    var intVal=setInterval(function(){
+                        var card=stacks[Math.floor(i/7)][i%7].div;
+                        card.style.top=($('#deck').position().top+i)+'px';
+                        card.style.left=($('#deck').position().left+i)+'px';
+                        i++;
+                        if(i>=21)clearInterval(intVal);
+                    },150);
+                }
+                
+                function unStackCards(){
+                    var i=20;
+                    var intVal=setInterval(function(){
+                        stacks[Math.floor(i/7)][i%7].div.style.top=(Math.floor(i/7)*90)+(-3+Math.floor(Math.random()*6))+100+'px';
+                        stacks[Math.floor(i/7)][i%7].div.style.left=(i%7*70)+(-3+Math.floor(Math.random()*6))+25+'px';
+                        i--;
+                        if(i<0)clearInterval(intVal);
+                    },150);
+                }
+            
+                function reStackCards(s){
+                    var o=[];
+                    switch(s){
+                        case 1:
+                            o.push(stacks[1]);
+                            o.push(stacks[0]);//put first row in middle
+                            o.push(stacks[2]);
+                            break;
+                        case 2:
+                            o.push(stacks[0]);
+                            o.push(stacks[1]);//leave middle in middle
+                            o.push(stacks[2]);
+                            break;
+                        case 3:
+                            o.push(stacks[0]);
+                            o.push(stacks[2]);//put last row in middle
+                            o.push(stacks[1]);
+                            break;
+                    }
+                    
+                    stacks[0] = [o[0][0],o[0][3],o[0][6],o[1][2],o[1][5],o[2][1],o[2][4]];
+                    stacks[1] = [o[0][1],o[0][4],o[1][0],o[1][3],o[1][6],o[2][2],o[2][5]];
+                    stacks[2] = [o[0][2],o[0][5],o[1][1],o[1][4],o[2][0],o[2][3],o[2][6]];
+                }
+                
+                function takeTurn(stack){
+                    turn++;
+                    flipAllCards();
+                    $('#buttons').fadeOut();
+                    setTimeout(function(){
+                        stackCards();
+                        setTimeout(function(){
+                            reStackCards(stack);
+                            if(turn<3){
+                                unStackCards();
+                                setTimeout(function(){
+                                    flipAllCards(1);
+                                    $('#buttons').delay(3000).fadeIn();
+                                },200);
+                            }else{
+                                endGame();
+                            }
+                        },4200);
+                    },200);
+                }
+                
+                function endGame(){
+                    unStackCards();
+                    setTimeout(function(){flipAllCards(1);},500);
+                    setTimeout(function(){
+                        var count=20;
+                        var card="0_0 0_1 0_2 0_3 0_4 0_5 0_6 1_0 1_1 1_2 1_4 1_5 1_6 2_0 2_1 2_2 2_3 2_4 2_5 2_6".split(" ");
+                        var dInterval = setInterval(function(){
+                            var random = Math.floor(Math.random()*count);
+                            var place = card[random].split("_");
+                            $(stacks[place[0]][place[1]].div).fadeOut();
+                            card.splice(random,1);
+                            count--;
+                            if(!count){
+                                clearInterval(dInterval);
+                                
+                            }
+                        },500);
+                    },4200);
+                }
+                
+                $(document).ready(function(){
+                    $('body').height(window.innerHeight);
+                    $('#gradient').height(window.innerHeight);
+                    $('#gradient').width(window.innerWidth);
+                    init();
+                });
+            </script>
+        </body>
+    </html>
